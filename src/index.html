@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<!-- saved from url=(0039)https://codemirror.net/1/contrib/regex/ -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>CodeMirror Regex Highlighting</title>
+<script type="text/javascript" src="lib/codemirror.js"></script>
+<link rel="stylesheet" href="lib/codemirror.css">
+<!-- <link rel="stylesheet" href="lib/eclipse.css"> -->
+<style type="text/css" media="screen">
+    .string { color: #555; font-style: italic }
+    .atom { color: #f08; font-style: italic; font-weight: bold; }
+    .comment { color: #262; font-style: italic; line-height: 1em; }
+    .meta { color: #555; font-style: italic; line-height: 1em; }
+    .variable { color: #700; text-decoration: underline; }
+    .variable-2 { color: #b11; }
+    .struct { color: #07c; font-weight: bold; }
+    .number { color: #f00; font-weight: bold; font-style: normal; }
+    .program { color: #f70; font-weight: bold; }
+    .function { color: #707; font-weight: bold; }
+    .action { color: #077; font-weight: bold; }
+    .qualifier { color: #555; }
+    .keyword { color: #00a; font-weight: bold; }
+    .builtin { color: #30a; }
+    .link { color: #762; }
+    .value { color: #0aa; font-weight: bold; font-style: normal; }
+    .plain { color: #000; font-weight: normal; font-style: normal; }
+
+    .warning { background-color: #ff9; }
+    .error { background-color: #fdd; }
+    .button { background-color: #add; }
+
+    /* https://pyformat.info/ */
+    .space {
+        display: inline-block;
+        margin-right: 1px;
+        padding: 0 4px;
+        background: #d6d6d6;
+        /* + mine: */
+        text-decoration: underline; 
+    }
+
+    .editor {
+        border-radius: 5px;
+        border: 3px solid #18069e;
+    }
+   
+</style>
+<script type="text/javascript">
+
+window.onload = function () {
+    // let cm = CodeMirror.fromTextArea('regexp');
+    /* let */ cm = CodeMirror.fromTextArea(document.getElementById('regexp'), {
+        lineWrapping: true,
+        scrollbarStyle: null,
+        // lineNumbers: true,
+        // theme: 'eclipse',
+    });
+    cm.setSize(null, 50);  // width, height
+
+
+
+    cm.setSelection(/* anchor: */ {line: 0, ch: 10}, /* ?head: */ {line: 0, ch: 20});
+
+    // Вставка
+    cm.replaceRange(/* replacement: */ ' (и мне)', /* from: */ {line: 0, ch: 56}, /* to: */ {line: 0, ch: 56});
+
+    cm.markText(/* from: */ {line: 0, ch: 26}, /* to: */ {line: 0, ch: 46}, /* ?options: */ {
+        className: 'atom',
+    });
+    
+    cm.markText(/* from: */ {line: 0, ch: 58}, /* to: */ {line: 0, ch: 86}, /* ?options: */ {
+        className: 'keyword',
+    });
+    
+    cm.markText(/* from: */ {line: 0, ch: 98}, /* to: */ {line: 0, ch: 106}, /* ?options: */ {
+        className: 'variable',
+    });
+    
+    for (let i = 108; i < 134; i++) {
+        cm.markText(/* from: */ {line: 0, ch: i}, /* to: */ {line: 0, ch: i + 1}, /* ?options: */ {
+            className: 'space',
+        });
+    }
+
+
+    /***- Fun)) -***/
+    // clear all marks
+    function removeRandomMark() {
+        let ms = cm.getAllMarks();
+        if (!ms) {
+            clearInterval(interval);
+            return;
+        }
+
+        let m = ms[parseInt(Math.random() * ms.length)];
+        m.clear();
+    }
+    setTimeout(() => {cm.getAllMarks().forEach(m => m.clear())}, 6500);
+    let interval = setInterval(removeRandomMark, 200);
+    
+
+
+    
+    // https://discuss.codemirror.net/t/single-line-codemirror/195/3
+    // a solution to prevent new lines (its for a custom search query input field):
+    cm.on("beforeChange", function(cm, changeObj) {
+        var typedNewLine = changeObj.origin == '+input' && typeof changeObj.text == "object" && changeObj.text.join("") == "";
+        if (typedNewLine) {
+            return changeObj.cancel();
+        }
+
+        var pastedNewLine = changeObj.origin == 'paste' && typeof changeObj.text == "object" && changeObj.text.length > 1;
+        if (pastedNewLine) {
+            var newText = changeObj.text.join(" ");
+
+            // trim
+            //newText = $.trim(newText);
+
+            return changeObj.update(null, null, [newText]);
+        }
+
+        return null;
+    });
+};
+
+</script>
+</head>
+
+<body>
+<div>
+    <h1>Regex Writing Helper</h1>
+<!--         <p>The Regex parser for CodeMirror allows syntax coloring on regular expressions with some beginning customizability by 
+        Regex flavor/language. For integrating styling of regular expression literals into JavaScript syntax highlighting, see this 
+        <a href="https://codemirror.net/1/contrib/regex/js-regex.html">JavaScript+Regex Demo</a>.</p>
+        <p>Styling ability is fine-grained, so any token should be distinctly stylable if so desired. Parenthetical groups can
+        be styled with the same styles for inner content, and the script also enables styling by nesting depth and sequence, 
+        including by imposing a limit such that styles will alternate.</p>
+        <p>Information can also be passed on (especially when the parseregex-unicode.js file is included) for use in CodeMirror's
+        activeTokens argument such as demonstrated below by tooltips which show which characters are present in a given
+        range or Unicode class.</p>
+        <p>Note that this editor does not support free-spacing mode, so it is not recommended to use multiple lines for input, but
+        for demonstration purposes, multiple lines are shown.</p> -->
+        <div class="editor">
+            <textarea id="regexp" style="display: show;" cols="100" rows="1" >Появилась идея сделать regex-helper для помощи Литовкину при составлении регулярок для степика. (опять же, на JS без сервера, и опубликовать ли его либо на github pages, либо на replit)</textarea>
+        </div>
+            
+<!-- <div class="CodeMirror-wrapping" style="position: relative; height: 84px;"><textarea tabindex="100000" style="position: absolute; left: -10000px; width: 10px;"></textarea><iframe frameborder="0" src="javascript:;" style="border: 0px; width: 100%; height: 100%; display: block;" scrolling="no" src="js/saved_resource.html"></iframe></div> -->
+        <textarea id="replacements" cols="30" rows="1">{$&}</textarea>
+</div>
+
+
+</body></html>
