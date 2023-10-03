@@ -86,7 +86,7 @@ window.onload = function () {
     // clear all marks
     function removeRandomMark() {
         let ms = cm.getAllMarks();
-        if (!ms) {
+        if (ms.length == 0) {
             clearInterval(interval);
             return;
         }
