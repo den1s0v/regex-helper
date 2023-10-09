@@ -25,6 +25,12 @@ class Match {
         return (this.len > other.len);
     }
 
+    locationForMark(role = 'src', line = 0) {
+        if (role === 'src')
+            return [/* from: */ {line, ch: this.pos}, /* to: */ {line, ch: this.pos + this.len}];
+        else if (role === 'dst')
+            return [/* from: */ {line, ch: this.insert_pos}, /* to: */ {line, ch: this.insert_pos + this.replacement.length}];
+    }
 }
 
 /**
@@ -47,7 +53,7 @@ class ReplaceItem {
         this.mode = cnf.mode || 'on';  // 'on' (do replace) or 'off' (do nothing) or 'keep' (do match but do not replace)
 
         // UI-related data
-        this.mark = {color: '#fdd'};
+        this.style = "color: #fdd";
         this.usage = [];
     }
 
@@ -57,7 +63,7 @@ class ReplaceItem {
      * @param {Number} pos optional start position of the search
      * @returns {Match} {pos: 123, len: 4} or null
      */
-    first_match(string, pos = 0) {
+    first_match(string, pos = 0, _inversed = false) {
         if (this.mode == 'off') {
             return null;
         }
@@ -81,6 +87,37 @@ class ReplaceItem {
 
     clearUsage() {
         this.usage = [];
+    }
+
+    static fromStr(s, inversed = false) {
+        s = str_strip(s);
+        // 1. Expect tab-separated a & b, possibly enclosed in single or double quotes
+        if (s === '' || s.startsWith('// ')) {
+            // empty or  outcommented line
+            return null; 
+        }
+        /* if (s.includes('\t')) */ {
+            // e.g.   ' ' -> "\s*"
+            const m  = /(\'[^\']+\'|\"[^\"]+\"|\S+)\s*(?:\t|->?)\s*(\'[^\']+\'|\"[^\"]+\"|\S+)/.exec(s);
+            if (!m)
+                return false; // parsing error
+            
+            let a = strip_quotes(m[1]);
+            let b = strip_quotes(m[2]);
+
+            if (inversed) {
+                [a, b] = [b, a];
+            }
+
+            let cnf = {a, b};
+
+            if (a === b) {
+                cnf.mode = 'keep';
+            }
+
+            return new ReplaceItem(cnf);
+        }
+        // return new ReplaceItem({a, b});
     }
 }
 
@@ -142,6 +179,9 @@ class Replacer {
             }
         }
 
+        ///
+        console.log(replaced_str_parts);
+
         return [replaced_str_parts.join(''), match_list];
     }
 
@@ -165,3 +205,26 @@ class Replacer {
         this.ris.forEach(ri => ri.clearUsage());
     }
 }
+
+function str_strip(s, chars = ' \t') {
+    // cut the beginning
+    while (s.length > 0 && chars.includes(s[0])) {
+        s = s.slice(1);
+    }
+    // cut the end
+    while (s.length > 0 && chars.includes(s[s.length - 1])) {
+        s = s.slice(0, -1);
+    }
+    return s;
+}
+
+function strip_quotes(s, chars = '"\'') {
+    // cut the beginning
+    const first = s[0];
+    const last = s[s.length - 1];
+    if (s.length > 0 && first === last && chars.includes(first) && chars.includes(last)) {
+        s = s.slice(1, -1);
+    }
+    return s;
+}
+

@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <!-- saved from url=(0039)https://codemirror.net/1/contrib/regex/ -->
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>CodeMirror Regex Highlighting</title>
+<title>Regex Writing Helper</title>
 <script type="text/javascript" src="lib/codemirror.js"></script>
+<script type="text/javascript" src="js/replacer.js"></script>
 <link rel="stylesheet" href="lib/codemirror.css">
 <!-- <link rel="stylesheet" href="lib/eclipse.css"> -->
 <style type="text/css" media="screen">
@@ -29,10 +30,10 @@
     .button { background-color: #add; }
 
     /* https://pyformat.info/ */
-    .space {
+    .separated-text {
         display: inline-block;
         margin-right: 1px;
-        padding: 0 4px;
+        padding: 0 2px;
         background: #d6d6d6;
         /* + mine: */
         text-decoration: underline; 
@@ -43,66 +44,50 @@
         border: 3px solid #18069e;
     }
    
+    .editor.src {
+        border-radius: 3px;
+        border: 7px solid #071ffa;
+    }
+   
+    .editor.dst {
+        border-radius: 3px;
+        border: 7px solid #07fa0b;
+    }
+   
+    .button-active {
+        border: 2px solid rgb(255, 0, 0);
+        color: rgb(3, 164, 3);
+    }
+   
 </style>
 <script type="text/javascript">
 
 window.onload = function () {
     // let cm = CodeMirror.fromTextArea('regexp');
-    /* let */ cm = CodeMirror.fromTextArea(document.getElementById('regexp'), {
+    let cm_a = CodeMirror.fromTextArea(document.getElementById('cm_a'), {
         lineWrapping: true,
         scrollbarStyle: null,
         // lineNumbers: true,
         // theme: 'eclipse',
     });
-    cm.setSize(null, 50);  // width, height
+    cm_a.setSize(null, 50);  // width, height
 
-
-
-    cm.setSelection(/* anchor: */ {line: 0, ch: 10}, /* ?head: */ {line: 0, ch: 20});
-
-    // Вставка
-    cm.replaceRange(/* replacement: */ ' (и мне)', /* from: */ {line: 0, ch: 56}, /* to: */ {line: 0, ch: 56});
-
-    cm.markText(/* from: */ {line: 0, ch: 26}, /* to: */ {line: 0, ch: 46}, /* ?options: */ {
-        className: 'atom',
+    let cm_b = CodeMirror.fromTextArea(document.getElementById('cm_b'), {
+        lineWrapping: true,
+        scrollbarStyle: null,
     });
+    cm_b.setSize(null, 50);  // width, height
     
-    cm.markText(/* from: */ {line: 0, ch: 58}, /* to: */ {line: 0, ch: 86}, /* ?options: */ {
-        className: 'keyword',
+    let cm_config = CodeMirror.fromTextArea(document.getElementById('cm_config'), {
+        lineWrapping: false,
+        lineNumbers: true,
+        // scrollbarStyle: null,
     });
-    
-    cm.markText(/* from: */ {line: 0, ch: 98}, /* to: */ {line: 0, ch: 106}, /* ?options: */ {
-        className: 'variable',
-    });
-    
-    for (let i = 108; i < 134; i++) {
-        cm.markText(/* from: */ {line: 0, ch: i}, /* to: */ {line: 0, ch: i + 1}, /* ?options: */ {
-            className: 'space',
-        });
-    }
 
 
-    /***- Fun)) -***/
-    // clear all marks
-    function removeRandomMark() {
-        let ms = cm.getAllMarks();
-        if (ms.length == 0) {
-            clearInterval(interval);
-            return;
-        }
-
-        let m = ms[parseInt(Math.random() * ms.length)];
-        m.clear();
-    }
-    setTimeout(() => {cm.getAllMarks().forEach(m => m.clear())}, 6500);
-    let interval = setInterval(removeRandomMark, 200);
-    
-
-
-    
     // https://discuss.codemirror.net/t/single-line-codemirror/195/3
     // a solution to prevent new lines (its for a custom search query input field):
-    cm.on("beforeChange", function(cm, changeObj) {
+    function suppress_newlines(cm, changeObj) {
         var typedNewLine = changeObj.origin == '+input' && typeof changeObj.text == "object" && changeObj.text.join("") == "";
         if (typedNewLine) {
             return changeObj.cancel();
@@ -119,7 +104,172 @@ window.onload = function () {
         }
 
         return null;
-    });
+    }
+    cm_a.on("beforeChange", suppress_newlines);
+    cm_b.on("beforeChange", suppress_newlines);
+
+    function set_remove_class(elem, new_class, old_class=null) {
+        if (old_class /* && elem */ && elem.classList.contains(old_class)) {
+            elem.classList.remove(old_class);
+        }
+        if (new_class && !elem.classList.contains(old_class)) {
+            elem.classList.add(new_class);
+        }
+    }
+    function update_direction_indication(mode = null) {
+        if (mode === 'a-b') {
+            set_remove_class(document.getElementById('cm_a_area'), 'src', 'dst');
+            set_remove_class(document.getElementById('cm_b_area'), 'dst', 'src');
+            set_remove_class(document.getElementById('btn-go-ab'), 'button-active', null);
+            set_remove_class(document.getElementById('btn-go-ba'), null, 'button-active');
+        } else if (mode === 'b-a') {
+            set_remove_class(document.getElementById('cm_b_area'), 'src', 'dst');
+            set_remove_class(document.getElementById('cm_a_area'), 'dst', 'src');
+            set_remove_class(document.getElementById('btn-go-ba'), 'button-active', null);
+            set_remove_class(document.getElementById('btn-go-ab'), null, 'button-active');
+        } else {
+            set_remove_class(document.getElementById('cm_a_area'), null, 'src');
+            set_remove_class(document.getElementById('cm_b_area'), null, 'src');
+            set_remove_class(document.getElementById('btn-go-ab'), null, 'button-active');
+            set_remove_class(document.getElementById('btn-go-ba'), null, 'button-active');
+        }
+    }
+
+    let need_update_a = true;
+    let need_update_b = true;
+
+    cm_a.on("changes", function(cm, _changes) {
+        if (!need_update_a) return;  // prevent infinite loop of updates
+        go('a-b');
+    })
+    
+    cm_b.on("changes", function(cm, _changes) {
+        if (!need_update_b) return;  // prevent infinite loop of updates
+        go('b-a');
+    })
+
+    document.getElementById("btn-go-ab").addEventListener('click', () => go('a-b'));
+    document.getElementById("btn-go-ba").addEventListener('click', () => go('b-a'));
+
+    cm_config.on("changes", function(cm, _changes) {
+        go('none');
+    })
+
+    // main UI-event-entry function
+    function go(direction = 'a-b') {
+        if (direction === 'a-b') {
+            need_update_b = false;
+            cm_b.setValue(do_replace(cm_a.getValue(), direction) /* + ' << from A' */);
+            need_update_b = true;
+        } else if (direction === 'b-a') {
+            need_update_a = false;
+            cm_a.setValue(do_replace(cm_b.getValue(), direction) /* + ' << from B' */)
+            need_update_a = true;
+        }
+        update_direction_indication(direction);
+    }
+
+    function do_replace(src, direction = 'a-b') {
+        
+
+        let replace_items = parse_replacement_config(direction === 'b-a');
+
+        /// console.log(replace_items)
+        let rr = new Replacer(replace_items);
+
+        [result, matches] = rr.replace_in_string(src);
+
+        // hightlight ...
+
+        /// console.log(matches)
+        setTimeout(() => {update_marks(matches, direction)}, 50);
+        
+        return result;
+    }
+
+    function update_marks(matches, direction = 'a-b') {
+        /// ...
+        cm_a.getAllMarks().forEach(m => m.clear());
+        cm_b.getAllMarks().forEach(m => m.clear());
+        cm_config.getAllMarks().forEach(m => m.clear());
+
+        let cm_role_list = (direction === 'a-b')? [[cm_a, 'src'], [cm_b, 'dst']] : [[cm_b, 'src'], [cm_a, 'dst']];
+        // cm_role_list.reverse(); ///
+
+        matches.forEach(m => {
+            for (cm_role of cm_role_list) {
+                let [cm, role] = cm_role;
+                let params = [...m.locationForMark(role), /* ?options: */ {
+                    // css: m.ri.style,
+                    className: 'separated-text',
+                }];
+                console.log(params) ///
+                cm.markText(...params);
+            }
+        });
+    }
+
+    function parse_replacement_config(inversed = false) {
+        let lines = str_strip(cm_config.getValue()).split('\n');
+        if (inversed) {
+            lines.reverse(); // bottom-to-top order in reverse mode
+        }
+        let replace_items = [];
+        for (line of lines) {
+            let ri = ReplaceItem.fromStr(line, inversed);
+            if (ri === false) {
+                console.log('Syntax error in line: ', line);
+            }
+            if (ri) {
+                replace_items.push(ri);
+            }
+        }
+        return replace_items;
+    }
+
+    function make_some_fun() {
+
+        cm_a.setSelection(/* anchor: */ {line: 0, ch: 10}, /* ?head: */ {line: 0, ch: 20});
+
+        // Вставка
+        cm_a.replaceRange(/* replacement: */ ' (и мне)', /* from: */ {line: 0, ch: 56}, /* to: */ {line: 0, ch: 56});
+
+        cm_a.markText(/* from: */ {line: 0, ch: 26}, /* to: */ {line: 0, ch: 46}, /* ?options: */ {
+            className: 'atom',
+        });
+        
+        cm_a.markText(/* from: */ {line: 0, ch: 58}, /* to: */ {line: 0, ch: 86}, /* ?options: */ {
+            className: 'keyword',
+        });
+        
+        cm_a.markText(/* from: */ {line: 0, ch: 98}, /* to: */ {line: 0, ch: 106}, /* ?options: */ {
+            className: 'variable',
+        });
+        
+        for (let i = 108; i < 134; i++) {
+            cm_a.markText(/* from: */ {line: 0, ch: i}, /* to: */ {line: 0, ch: i + 1}, /* ?options: */ {
+                className: 'separated-text',
+            });
+        }
+
+
+        /***- Fun)) -***/
+        // clear all marks
+        function removeRandomMark() {
+            let ms = cm_a.getAllMarks();
+            if (ms.length == 0) {
+                clearInterval(interval);
+                return;
+            }
+
+            let m = ms[parseInt(Math.random() * ms.length)];
+            m.clear();
+        }
+        setTimeout(() => {cm_a.getAllMarks().forEach(m => m.clear())}, 6500);
+        let interval = setInterval(removeRandomMark, 200);
+    }
+
+
 };
 
 </script>
@@ -128,23 +278,64 @@ window.onload = function () {
 <body>
 <div>
     <h1>Regex Writing Helper</h1>
-<!--         <p>The Regex parser for CodeMirror allows syntax coloring on regular expressions with some beginning customizability by 
-        Regex flavor/language. For integrating styling of regular expression literals into JavaScript syntax highlighting, see this 
-        <a href="https://codemirror.net/1/contrib/regex/js-regex.html">JavaScript+Regex Demo</a>.</p>
-        <p>Styling ability is fine-grained, so any token should be distinctly stylable if so desired. Parenthetical groups can
-        be styled with the same styles for inner content, and the script also enables styling by nesting depth and sequence, 
-        including by imposing a limit such that styles will alternate.</p>
-        <p>Information can also be passed on (especially when the parseregex-unicode.js file is included) for use in CodeMirror's
-        activeTokens argument such as demonstrated below by tooltips which show which characters are present in a given
-        range or Unicode class.</p>
-        <p>Note that this editor does not support free-spacing mode, so it is not recommended to use multiple lines for input, but
-        for demonstration purposes, multiple lines are shown.</p> -->
-        <div class="editor">
-            <textarea id="regexp" style="display: show;" cols="100" rows="1" >Появилась идея сделать regex-helper для помощи Литовкину при составлении регулярок для степика. (опять же, на JS без сервера, и опубликовать ли его либо на github pages, либо на replit)</textarea>
+        <p>
+            Появилась идея сделать regex-helper для помощи при составлении регулярок для Степика. <!-- (опять же, на JS без сервера, и опубликовать ли его либо на github pages, либо на replit) -->
+        </p>
+        <p>
+            Проблема:  регулярки быстро становится длинными и плохо читаются.
+            Например:
+            <ul>
+                <li>Там, где может стоять необязательный пробел, нужно написать <span class="separated-text">\s*</span> </li>
+                <li>Там, где должен стоять 1 пробел или более, нужно написать <span class="separated-text">\s+</span> </li>
+                <li>Там, где должны стоять (круглые / фигурные / квадратные) скобки, их нужно экранировать. </li>
+                <li>Символы арифметики, точку и некоторые другие символы нужно экранировать в соответствии с синтаксисом регулярок. </li>
+            </ul>
+        </p>
+        <p>
+            Решение: заменять частые фрагменты автоматически, не ухудшая читаемости.  Условимся, что:
+            <ul>
+                <li><span class="separated-text">\s*</span> будем обозначать одиночным пробелом, </li>
+                <li><span class="separated-text">\s+</span> будем обозначать двойным пробелом, </li>
+                <li>Отдельные спецсимволы (<span class="separated-text">+ * / ( ) [ ] { }</span>) будем экранировать одинарным обратным слешем (<span class="separated-text">\</span>) </li>
+                <li>Сам обратный слеш (<span class="separated-text">\</span>) заменять не будем, сохраняя спецпоследовательности, заданные вручную. </li>
+            </ul>
+
+
+        </p>
+
+        <h3>Редактор (условный язык) и заменённый текст (сформированная регулярка)</h3>
+
+        <div class="editor src" id="cm_a_area">
+            <textarea id="cm_a" cols="100" rows="1" ></textarea>
+        </div>
+
+        <input type="button" id="btn-go-ab" value="▼" style="font-size : 30px; width: 95px ; height: 35px; margin-left: 10%;">
+        <input type="button" id="btn-go-ba" value="▲" style="font-size : 30px; width: 95px ; height: 35px;">
+            
+        <div class="editor dst" id="cm_b_area">
+            <textarea id="cm_b" cols="100" rows="1" > -- Результат --</textarea>
+        </div>
+
+        <h3>Настройка замен</h3>
+            
+        <div class="editor" id="cm_config_area">
+            <textarea id="cm_config" cols="100" rows="30" >// replace items ... 
+' '  -> \s*
+"  " -> \s+
++    -> \+
++    -> \+
+*    -> \*
+/    -> \/
+(    -> \(
+)    -> \)
+[    -> \[
+]    -> \]
+{    -> \{
+}    -> \}
+            </textarea>
         </div>
             
 <!-- <div class="CodeMirror-wrapping" style="position: relative; height: 84px;"><textarea tabindex="100000" style="position: absolute; left: -10000px; width: 10px;"></textarea><iframe frameborder="0" src="javascript:;" style="border: 0px; width: 100%; height: 100%; display: block;" scrolling="no" src="js/saved_resource.html"></iframe></div> -->
-        <textarea id="replacements" cols="30" rows="1">{$&}</textarea>
 </div>
 
 
