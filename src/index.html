@@ -29,14 +29,30 @@
     .error { background-color: #fdd; }
     .button { background-color: #add; }
 
-    /* https://pyformat.info/ */
+    /* based on https://pyformat.info/ */
     .separated-text {
         display: inline-block;
         margin-right: 1px;
         padding: 0 2px;
-        background: #d6d6d6;
+        background: #ececec;
         /* + mine: */
         text-decoration: underline; 
+    }
+    .char {
+        display: inline-block;
+        /* margin-right: 1px;
+        padding: 0 2px; */
+        background: #ececec;
+        /* + mine: */
+        /* text-decoration: underline;  */
+    }
+
+    .circle
+    {
+        /* background: #cbcbcb; */
+        background: radial-gradient(circle at center,  #adacac81 0%,#adacac81 29%,#adacac81 29%,#00000000 29%,#90ecfe00 35%);
+        position: relative;
+        top: 1px;  /* смещение вниз */
     }
 
     .editor {
@@ -159,32 +175,30 @@ window.onload = function () {
     function go(direction = 'a-b') {
         if (direction === 'a-b') {
             need_update_b = false;
-            cm_b.setValue(do_replace(cm_a.getValue(), direction) /* + ' << from A' */);
+            do_replace(cm_a, cm_b, direction);
             need_update_b = true;
         } else if (direction === 'b-a') {
             need_update_a = false;
-            cm_a.setValue(do_replace(cm_b.getValue(), direction) /* + ' << from B' */)
+            do_replace(cm_b, cm_a, direction);
             need_update_a = true;
         }
         update_direction_indication(direction);
     }
 
-    function do_replace(src, direction = 'a-b') {
+    function do_replace(cm_src, cm_dst, direction = 'a-b') {
         
 
         let replace_items = parse_replacement_config(direction === 'b-a');
 
-        /// console.log(replace_items)
         let rr = new Replacer(replace_items);
 
-        [result, matches] = rr.replace_in_string(src);
+        let [result, matches] = rr.replace_in_string(cm_src.getValue());
+
+        cm_dst.setValue(result);
 
         // hightlight ...
-
-        /// console.log(matches)
-        setTimeout(() => {update_marks(matches, direction)}, 50);
-        
-        return result;
+        //// console.log('matches:', matches)
+        update_marks(matches, direction);
     }
 
     function update_marks(matches, direction = 'a-b') {
@@ -199,12 +213,31 @@ window.onload = function () {
         matches.forEach(m => {
             for (cm_role of cm_role_list) {
                 let [cm, role] = cm_role;
-                let params = [...m.locationForMark(role), /* ?options: */ {
+                let css_class = 'char';
+                let mark_each_char = false;
+
+                const cm_positions = m.locationForMark(role);
+                let highlighted_text = cm.getRange(...cm_positions);
+                if (highlighted_text.trim() === '') {
+                    // spaces only (note than \n is impossible in current setting)
+                    css_class = 'circle';
+                    mark_each_char = true;
+                }
+                const mark_options = {
                     // css: m.ri.style,
-                    className: 'separated-text',
-                }];
-                console.log(params) ///
-                cm.markText(...params);
+                    className: css_class,
+                };
+
+                if (mark_each_char) {
+                    const line = cm_positions[0].line;
+                    for (let i = cm_positions[0].ch; i < cm_positions[1].ch; i++)
+                        cm.markText({line, ch: i}, {line, ch: i + 1}, mark_options);
+                } else {
+                    // let params = [...cm_positions, mark_options ];
+                    // console.log('mark:', params) ///
+                    cm.markText(...cm_positions, mark_options);
+                }
+
             }
         });
     }
@@ -278,6 +311,8 @@ window.onload = function () {
 <body>
 <div>
     <h1>Regex Writing Helper</h1>
+        <details open>
+            <summary>Описание (нажмите здесь, чтобы свернуть)</summary>
         <p>
             Появилась идея сделать regex-helper для помощи при составлении регулярок для Степика. <!-- (опять же, на JS без сервера, и опубликовать ли его либо на github pages, либо на replit) -->
         </p>
@@ -294,23 +329,27 @@ window.onload = function () {
         <p>
             Решение: заменять частые фрагменты автоматически, не ухудшая читаемости.  Условимся, что:
             <ul>
-                <li><span class="separated-text">\s*</span> будем обозначать одиночным пробелом, </li>
-                <li><span class="separated-text">\s+</span> будем обозначать двойным пробелом, </li>
+                <li><big><span class="separated-text">\s*</span> — пробел не нужен, но <b>допустим</b> — будем обозначать <b>одиночным пробелом</b>,</big> </li>
+                <li><big><span class="separated-text">\s+</span> — пробел <b>нужен</b>, хотя бы один — будем обозначать <b>двойным пробелом</b>,</big> </li>
                 <li>Отдельные спецсимволы (<span class="separated-text">+ * / ( ) [ ] { }</span>) будем экранировать одинарным обратным слешем (<span class="separated-text">\</span>) </li>
-                <li>Сам обратный слеш (<span class="separated-text">\</span>) заменять не будем, сохраняя спецпоследовательности, заданные вручную. </li>
+                <li>Сам обратный слеш (<span class="separated-text">\</span>) заменять не будем, сохраняя спецпоследовательности, заданные в верхнем поле вручную. </li>
             </ul>
 
+            <small>
+                Полученную в нижнем поле регулярку можно проверить сервисом <a href="https://regex101.com/">regex101.com</a> и использовать на Степике.
+            </small>
 
         </p>
+        </details>
 
         <h3>Редактор (условный язык) и заменённый текст (сформированная регулярка)</h3>
 
         <div class="editor src" id="cm_a_area">
-            <textarea id="cm_a" cols="100" rows="1" ></textarea>
+            <textarea id="cm_a" cols="100" rows="1" >int  my_func ( int  param1 , float  param2 ) ;</textarea>
         </div>
 
-        <input type="button" id="btn-go-ab" value="▼" style="font-size : 30px; width: 95px ; height: 35px; margin-left: 10%;">
-        <input type="button" id="btn-go-ba" value="▲" style="font-size : 30px; width: 95px ; height: 35px;">
+        <input type="button" id="btn-go-ab" value="▼" title="применить замены к верхнему полю" style="font-size : 30px; width: 95px ; height: 35px; margin-left: 10%;">
+        <input type="button" id="btn-go-ba" value="▲"  title="применить замены в обратном направлении к нижнему полю"  style="font-size : 30px; width: 95px ; height: 35px;">
             
         <div class="editor dst" id="cm_b_area">
             <textarea id="cm_b" cols="100" rows="1" > -- Результат --</textarea>
@@ -319,12 +358,12 @@ window.onload = function () {
         <h3>Настройка замен</h3>
             
         <div class="editor" id="cm_config_area">
-            <textarea id="cm_config" cols="100" rows="30" >// replace items ... 
-' '  -> \s*
-"  " -> \s+
+            <textarea id="cm_config" cols="100" rows="30" >// Перечень замен (можно изменять!) ... 
+' '  -> \s*     // Один пробел становится "опциональным пробелом"
+"  " -> \s+     // Два пробела становятся "минимум одним пробелом"
++    -> \+  
 +    -> \+
-+    -> \+
-*    -> \*
+*    -> \*      // (остальные символы просто экранируются обратным слешем)
 /    -> \/
 (    -> \(
 )    -> \)
