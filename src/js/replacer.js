@@ -2,7 +2,7 @@
 class Match {
     constructor (cnf) {
         // whithin the source string:
-        this.pos = cnf.pos || +Infinity;
+        this.pos = (cnf.pos !== undefined) ? cnf.pos : +Infinity;
         this.len = cnf.len || 0;
         // whithin the destination string:
         this.insert_pos = cnf.insert_pos || +Infinity;
@@ -179,8 +179,7 @@ class Replacer {
             }
         }
 
-        ///
-        console.log(replaced_str_parts);
+        /// console.log('replaced_str_parts:', replaced_str_parts);
 
         return [replaced_str_parts.join(''), match_list];
     }
