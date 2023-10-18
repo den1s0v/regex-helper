@@ -272,7 +272,12 @@ window.onload = function () {
     }
 
     function parse_replacement_config(inversed = false) {
-        let lines = str_strip(cm_config.getValue()).split('\n');
+        const config_area_text = cm_config.getValue();
+
+        // save to localStorage...
+        window.localStorage.setItem('config_autosave', config_area_text)
+
+        let lines = str_strip(config_area_text).split('\n');
         if (inversed) {
             lines.reverse(); // bottom-to-top order in reverse mode
         }
@@ -289,6 +294,47 @@ window.onload = function () {
         return replace_items;
     }
 
+    document.getElementById("btn-set-config-default").addEventListener('click', () => set_config_area_text('default'));
+    document.getElementById("btn-set-config-autosaved").addEventListener('click', () => set_config_area_text('autosaved'));
+    document.getElementById("btn-set-config-last-session").addEventListener('click', () => set_config_area_text('last-session'));
+
+    function set_config_area_text(mode) {
+        if (mode === 'default') {
+            // use initial value stored in DOM element (untouched).
+            const text = document.getElementById("cm_config").textContent;
+            cm_config.setValue(text);
+        } else if (mode === 'autosaved') {
+            const text = window.localStorage.getItem("config_autosave");
+            if (text)
+                cm_config.setValue(text);
+        } else if (mode === 'last-session') {
+            const text = window.localStorage.getItem("config_last_session");
+            if (text)
+                cm_config.setValue(text);
+        }
+    }
+
+    document.getElementById("btn-set-config-save-now").addEventListener('click', () => {
+        const text = cm_config.getValue();
+        const autosaved_text = window.localStorage.setItem("config_autosave", text);
+    });
+
+
+   const autosaved_text = window.localStorage.getItem("config_autosave");
+    const last_session_text = window.localStorage.getItem("config_last_session");
+    if (autosaved_text) {
+        // update editor value automatically
+        cm_config.setValue(autosaved_text);
+        // update last session value in the beginning of new session - on page (re)load.
+        window.localStorage.setItem("config_last_session", autosaved_text);
+    } else if (last_session_text) {
+        // update editor value automatically
+        cm_config.setValue(last_session_text);
+    }
+    if (!window.localStorage.getItem("config_last_session")) {
+        // set button inactive
+        document.getElementById("btn-set-config-last-session").setAttribute('disabled', true);
+    }
 };
 
 </script>
@@ -341,8 +387,18 @@ window.onload = function () {
             <textarea id="cm_b" cols="100" rows="1" > -- Результат --</textarea>
         </div>
 
-        <h3>Настройка замен</h3>
+        <div style="padding-top: 1.2em;">
             
+            <input type="button" id="btn-set-config-default" style="float: right;" value="по умолчанию ↴">
+            <input type="button" id="btn-set-config-last-session" style="float: right;" value="из прошлого сеанса ↴">
+            <input type="button" id="btn-set-config-autosaved" style="float: right;" value="последнее сохранённое ↴">
+            <input type="button" id="btn-set-config-save-now" style="float: right; margin-right: 1em;" value="↱ сохранить 💾">
+            <span style="float: right;"> Конфигурация замен: &nbsp;</span>
+        </div>
+
+        <h3 style="margin-top: 0; margin-bottom: 0.5em;">Настройка замен</h3>
+        
+
         <div class="editor" id="cm_config_area">
             <textarea id="cm_config" cols="100" rows="30" >// Перечень замен (можно изменять!) ... 
 ' '  -> \s*     // Один пробел становится "опциональным пробелом"
