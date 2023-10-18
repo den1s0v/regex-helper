@@ -72,17 +72,17 @@
 
     .editor {
         border-radius: 5px;
-        border: 3px solid #18069e;
+        border: 5px solid #888888;
     }
    
     .editor.src {
         border-radius: 3px;
-        border: 7px solid #071ffa;
+        border: 5px solid #071ffa;
     }
    
     .editor.dst {
         border-radius: 3px;
-        border: 7px solid #07fa0b;
+        border: 5px solid #07fa0b;
     }
    
     .button-active {
@@ -161,6 +161,8 @@ window.onload = function () {
         } else {
             set_remove_class(document.getElementById('cm_a_area'), null, 'src');
             set_remove_class(document.getElementById('cm_b_area'), null, 'src');
+            set_remove_class(document.getElementById('cm_a_area'), null, 'dst');
+            set_remove_class(document.getElementById('cm_b_area'), null, 'dst');
             set_remove_class(document.getElementById('btn-go-ab'), null, 'button-active');
             set_remove_class(document.getElementById('btn-go-ba'), null, 'button-active');
         }
