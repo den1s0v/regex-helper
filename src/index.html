@@ -43,8 +43,15 @@
         /* margin-right: 1px;
         padding: 0 2px; */
         background: #ececec;
-        /* + mine: */
-        /* text-decoration: underline;  */
+    }
+
+    .char.blue {
+        display: inline-block;
+        background: #c6cbdb;
+    }
+    .char.green {
+        display: inline-block;
+        background: #d4ebd7;
     }
 
     .circle
@@ -53,6 +60,14 @@
         background: radial-gradient(circle at center,  #adacac81 0%,#adacac81 29%,#adacac81 29%,#00000000 29%,#90ecfe00 35%);
         position: relative;
         top: 1px;  /* смещение вниз */
+    }
+
+    .tabline {
+        background: linear-gradient(180deg, 
+            rgba(0,0,0,0) calc(50% - 1px), 
+            rgba(192,192,192,1) calc(50%), 
+            rgba(0,0,0,0) calc(50% + 1px)
+        );
     }
 
     .editor {
@@ -210,7 +225,10 @@ window.onload = function () {
         let cm_role_list = (direction === 'a-b')? [[cm_a, 'src'], [cm_b, 'dst']] : [[cm_b, 'src'], [cm_a, 'dst']];
         // cm_role_list.reverse(); ///
 
+        let style_counter = 0;
+
         matches.forEach(m => {
+            style_counter++;
             for (cm_role of cm_role_list) {
                 let [cm, role] = cm_role;
                 let css_class = 'char';
@@ -219,20 +237,31 @@ window.onload = function () {
                 const cm_positions = m.locationForMark(role);
                 let highlighted_text = cm.getRange(...cm_positions);
                 if (highlighted_text.trim() === '') {
-                    // spaces only (note than \n is impossible in current setting)
-                    css_class = 'circle';
+                    // spaces only (note than \n is impossible in current setting, but \t is possible)
                     mark_each_char = true;
                 }
-                const mark_options = {
-                    // css: m.ri.style,
-                    className: css_class,
-                };
 
                 if (mark_each_char) {
+                    // mark whitespaces (spaces and tabs supported so far)
                     const line = cm_positions[0].line;
                     for (let i = cm_positions[0].ch; i < cm_positions[1].ch; i++)
-                        cm.markText({line, ch: i}, {line, ch: i + 1}, mark_options);
+                    {
+                        const cm_positions = [{line, ch: i}, {line, ch: i + 1}];
+                        let highlighted_text = cm.getRange(...cm_positions);
+                        css_class = highlighted_text === '\t' ? 'tabline' : 'circle';
+                        const mark_options = {
+                            className: css_class,
+                        };
+                        cm.markText(...cm_positions, mark_options);
+                    }
                 } else {
+                    if (m.ri.mode !== 'keep') {
+                        // use changing color in background (to visually separate adjacent matches)
+                        css_class = 'char' + ' ' + (['green', 'blue'][style_counter % 2]);
+                    }
+                    const mark_options = {
+                        className: css_class,
+                    };
                     // let params = [...cm_positions, mark_options ];
                     // console.log('mark:', params) ///
                     cm.markText(...cm_positions, mark_options);
@@ -345,7 +374,7 @@ window.onload = function () {
         <h3>Редактор (условный язык) и заменённый текст (сформированная регулярка)</h3>
 
         <div class="editor src" id="cm_a_area">
-            <textarea id="cm_a" cols="100" rows="1" >int  my_func ( int  param1 , float  param2 ) ;</textarea>
+            <textarea id="cm_a" cols="100" rows="1" >int  my_func ( int  param1 , float	 param2 ) ;</textarea>
         </div>
 
         <input type="button" id="btn-go-ab" value="▼" title="применить замены к верхнему полю" style="font-size : 30px; width: 95px ; height: 35px; margin-left: 10%;">
@@ -361,6 +390,8 @@ window.onload = function () {
             <textarea id="cm_config" cols="100" rows="30" >// Перечень замен (можно изменять!) ... 
 ' '  -> \s*     // Один пробел становится "опциональным пробелом"
 "  " -> \s+     // Два пробела становятся "минимум одним пробелом"
+"   " -> " "    // Три пробела становятся просто одним пробелом
+'	' -> " "    // В этой роли можно также использовать Tab
 +    -> \+  
 +    -> \+
 *    -> \*      // (остальные символы просто экранируются обратным слешем)
@@ -371,6 +402,8 @@ window.onload = function () {
 ]    -> \]
 {    -> \{
 }    -> \}
+|    -> \|
+// "\ " -> ' ' // одиночный пробел можно экранировать, чтобы сохранить его в результате (отключено комментарием '//' в начале строки)
             </textarea>
         </div>
             

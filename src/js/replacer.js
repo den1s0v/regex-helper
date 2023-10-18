@@ -53,7 +53,7 @@ class ReplaceItem {
         this.mode = cnf.mode || 'on';  // 'on' (do replace) or 'off' (do nothing) or 'keep' (do match but do not replace)
 
         // UI-related data
-        this.style = "color: #fdd";
+        // this.style = "color: #fdd";  // TODO: use this?
         this.usage = [];
     }
 
